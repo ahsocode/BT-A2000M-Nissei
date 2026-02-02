@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Nissei</string>
+    <string name="checklist_runner_title">Danh Sách Kiểm Tra</string>
+    <string name="checklist_runner_info">Checklist: \nTổng mục: </string>
+    <string name="button_back">TRỞ LẠI</string>
+    <string name="button_next">TIẾP</string>
+    <string name="checklist_preview_description">Xem trước danh sách các mục kiểm tra</string>
+    <string name="checklist_runner_description">Mục kiểm tra hiện tại</string>
 </resources>
