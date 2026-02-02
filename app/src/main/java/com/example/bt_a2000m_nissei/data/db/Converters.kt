@@ -5,16 +5,16 @@ import androidx.room.TypeConverter
 class Converters {
 
     @TypeConverter
-    fun toPeriod(value: String?): InspectionPeriod? =
+    fun fromInspectionPeriod(value: InspectionPeriod?): String? = value?.name
+
+    @TypeConverter
+    fun toInspectionPeriod(value: String?): InspectionPeriod? =
         value?.let { InspectionPeriod.valueOf(it) }
 
     @TypeConverter
-    fun fromPeriod(value: InspectionPeriod?): String? = value?.name
+    fun fromChecklistItemType(value: ChecklistItemType?): String? = value?.name
 
     @TypeConverter
-    fun toItemType(value: String?): ChecklistItemType? =
+    fun toChecklistItemType(value: String?): ChecklistItemType? =
         value?.let { ChecklistItemType.valueOf(it) }
-
-    @TypeConverter
-    fun fromItemType(value: ChecklistItemType?): String? = value?.name
 }

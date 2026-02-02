@@ -14,12 +14,22 @@ class MainMenuActivity : AppCompatActivity() {
         binding = ActivityMainMenuBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnStartInspection.setOnClickListener {
+        binding.btnScanMachine.setOnClickListener {
             startActivity(Intent(this, ScanMachineActivity::class.java))
         }
 
         binding.btnHistory.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
+        binding.btnLogout.setOnClickListener {
+            // TODO: clear session / user (nếu có)
+            startActivity(Intent(this, LoginActivity::class.java))
+            finishAffinity()
+        }
+
+        binding.btnExit.setOnClickListener {
+            finishAffinity() // đóng toàn bộ app
+        }
+
     }
 }

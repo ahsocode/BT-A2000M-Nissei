@@ -1,5 +1,6 @@
 package com.example.bt_a2000m_nissei
 
+import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -7,12 +8,11 @@ import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.KeyEvent
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.getSystemService
 import androidx.lifecycle.lifecycleScope
 import com.example.bt_a2000m_nissei.data.db.AppDatabase
-import com.example.bt_a2000m_nissei.data.db.MachineEntity
 import com.example.bt_a2000m_nissei.databinding.ActivityScanMachineBinding
 import com.keyence.autoid.sdk.scan.DecodeResult
 import com.keyence.autoid.sdk.scan.ScanManager
@@ -27,30 +27,41 @@ class ScanMachineActivity : AppCompatActivity() {
     private var scanManager: ScanManager? = null
     private var dataListener: ScanManager.DataListener? = null
 
-    private var selectedMachineId: String? = null
-
     private var isInvalidState = false
+
+    private val vibrator: Vibrator by lazy {
+        getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityScanMachineBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        initScannerListener()
 
-        binding.btnNext.setOnClickListener {
-            startActivity(Intent(this, ChecklistMenuActivity::class.java).apply {
-                putExtra("machineId", selectedMachineId)
-            })
-        }
+        binding.btnBack.setOnClickListener { finish() }
+    }
 
-        initScanner()
+    override fun onResume() {
+        super.onResume()
+        scanManager = ScanManager.createScanManager(this)
+        dataListener?.let { scanManager?.addDataListener(it) }
         setReadyUI()
     }
 
-    private fun initScanner() {
-        scanManager = ScanManager.createScanManager(this)
+    override fun onPause() {
+        super.onPause()
+        vibrator.cancel()
+        dataListener?.let { scanManager?.removeDataListener(it) }
+        scanManager?.releaseScanManager()
+        scanManager = null
+    }
 
+    private fun initScannerListener() {
         dataListener = object : ScanManager.DataListener {
             override fun onDataReceived(data: DecodeResult) {
+                vibrator.cancel()
+
                 val code = data.data?.trim().orEmpty()
                 if (code.isEmpty()) return
 
@@ -64,32 +75,39 @@ class ScanMachineActivity : AppCompatActivity() {
                     if (machine == null) {
                         showInvalid(code)
                     } else {
-                        showValid(machine)
+                        setReadyUI()
+                        val intent = Intent(this@ScanMachineActivity, MachineDetailActivity::class.java)
+                        intent.putExtra("machineId", machine.id)
+                        startActivity(intent)
                     }
                 }
             }
         }
-
-        scanManager?.addDataListener(dataListener)
     }
 
-    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        val isTriggerKey = (event.keyCode == android.view.KeyEvent.KEYCODE_FOCUS
-                || event.keyCode == android.view.KeyEvent.KEYCODE_CAMERA)
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Handle F1 key press for going back
+        if (event.keyCode == KeyEvent.KEYCODE_F1 && event.action == KeyEvent.ACTION_DOWN) {
+            finish()
+            return true
+        }
+
+        val isTriggerKey = (event.keyCode == KeyEvent.KEYCODE_FOCUS
+                || event.keyCode == KeyEvent.KEYCODE_CAMERA)
 
         if (!isTriggerKey) return super.dispatchKeyEvent(event)
 
         when (event.action) {
-            android.view.KeyEvent.ACTION_DOWN -> {
+            KeyEvent.ACTION_DOWN -> {
                 if (isInvalidState) {
                     setReadyUI()
-                    return true
+                } else {
+                    setScanningUI()
+                    scanManager?.startRead()
                 }
-                setScanningUI()
-                scanManager?.startRead()
                 return true
             }
-            android.view.KeyEvent.ACTION_UP -> {
+            KeyEvent.ACTION_UP -> {
                 if (!isInvalidState) {
                     scanManager?.stopRead()
                     setReadyUI()
@@ -105,10 +123,7 @@ class ScanMachineActivity : AppCompatActivity() {
         binding.ngOverlay.visibility = View.GONE
         binding.root.setBackgroundColor(0xFFFFFFFF.toInt())
         binding.tvStatus.text = "Ready"
-
-        // Stop vibration
-        val vibrator = getSystemService<Vibrator>()
-        vibrator?.cancel()
+        vibrator.cancel()
     }
 
     private fun setScanningUI() {
@@ -122,34 +137,8 @@ class ScanMachineActivity : AppCompatActivity() {
         binding.ngOverlay.visibility = View.VISIBLE
         binding.ngOverlayMessage.text = "MÃ KHÔNG HỢP LỆ: $scanned"
 
-        binding.btnNext.isEnabled = false
-        selectedMachineId = null
-
-        binding.tvMachineCode.text = "Mã: -"
-        binding.tvMachineName.text = "Tên: -"
-        binding.tvMachineLocation.text = "Vị trí: -"
-        binding.tvMachineNote.text = "Ghi chú: -"
-
         beepError()
         vibrateError()
-    }
-
-    private fun showValid(machine: MachineEntity) {
-        val vibrator = getSystemService<Vibrator>()
-        vibrator?.cancel()
-
-        isInvalidState = false
-        binding.ngOverlay.visibility = View.GONE
-        binding.root.setBackgroundColor(0xFFC8E6C9.toInt())
-        binding.tvStatus.text = "OK: Mã hợp lệ"
-
-        binding.tvMachineCode.text = "Mã: ${machine.machineCode}"
-        binding.tvMachineName.text = "Tên: ${machine.machineName}"
-        binding.tvMachineLocation.text = "Vị trí: ${machine.location ?: "-"}"
-        binding.tvMachineNote.text = "Ghi chú: ${machine.note ?: "-"}"
-
-        selectedMachineId = machine.id
-        binding.btnNext.isEnabled = true
     }
 
     private fun beepError() {
@@ -158,8 +147,6 @@ class ScanMachineActivity : AppCompatActivity() {
     }
 
     private fun vibrateError() {
-        val vibrator = getSystemService<Vibrator>() ?: return
-        // Vibrate for 400ms, pause for 400ms, repeat
         val pattern = longArrayOf(0, 400, 400)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
@@ -171,12 +158,6 @@ class ScanMachineActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        dataListener?.let { scanManager?.removeDataListener(it) }
-        scanManager?.releaseScanManager()
-        scanManager = null
-
-        // Stop vibration
-        val vibrator = getSystemService<Vibrator>()
-        vibrator?.cancel()
+        vibrator.cancel()
     }
 }

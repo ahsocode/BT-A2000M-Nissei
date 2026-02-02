@@ -25,9 +25,13 @@
         <activity android:name=".MainMenuActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".ChecklistMenuActivity" />
+        <activity android:name=".ChecklistPreviewActivity" />
+        <activity android:name=".ChecklistReviewActivity" />
         <activity android:name=".ChecklistRunnerActivity" />
         <activity android:name=".ScanMachineActivity" />
         <activity android:name=".HistoryActivity" />
+        <activity android:name=".HistoryDetailActivity" />
+        <activity android:name=".MachineDetailActivity" />
 
     </application>
 

@@ -2,6 +2,7 @@ package com.example.bt_a2000m_nissei
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.bt_a2000m_nissei.data.db.AppDatabase
@@ -27,30 +28,33 @@ class MachineDetailActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val machine = withContext(Dispatchers.IO) {
-                AppDatabase.get(this@MachineDetailActivity)
-                    .machineDao()
-                    .findById(machineId)
+                AppDatabase.get(this@MachineDetailActivity).machineDao().findById(machineId)
             }
-
-            if (machine == null) {
-                finish()
-                return@launch
-            }
-
-            // Hiển thị thông tin dây chuyền
-            binding.tvMachineCode.text = "Mã dây chuyền: ${machine.machineCode}"
-            binding.tvMachineName.text = "Tên dây chuyền: ${machine.machineName}"
-            binding.tvLocation.text = "Vị trí: ${machine.location ?: "-"}"
-            binding.tvDescription.text = "Mô tả: ${machine.description ?: "-"}"
-            binding.tvNote.text = "Ghi chú: ${machine.note ?: "-"}"
-
-            binding.btnStartChecklist.setOnClickListener {
-                // bước sau: chọn checklist ngày / tuần / tháng
-                startActivity(
-                    Intent(this@MachineDetailActivity, ChecklistMenuActivity::class.java)
-                        .putExtra("machineId", machine.id)
-                )
+            if (machine != null) {
+                binding.tvMachineCode.text = "Mã dây chuyền: ${machine.machineCode}"
+                binding.tvMachineName.text = "Tên dây chuyền: ${machine.machineName}"
+                binding.tvLocation.text = "Vị trí: ${machine.location ?: "-"}"
+                binding.tvDescription.text = "Mô tả: ${machine.description ?: "-"}"
+                binding.tvNote.text = "Ghi chú: ${machine.note ?: "-"}"
             }
         }
+
+        binding.btnStartChecklist.setOnClickListener {
+            val intent = Intent(this, ChecklistMenuActivity::class.java)
+            intent.putExtra("machineId", machineId)
+            startActivity(intent)
+        }
+
+        binding.btnScanAgain.setOnClickListener {
+            finish()
+        }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_FOCUS || keyCode == KeyEvent.KEYCODE_CAMERA) {
+            finish()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 }
